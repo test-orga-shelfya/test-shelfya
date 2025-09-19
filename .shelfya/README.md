@@ -1,101 +1,65 @@
-# Shelfya Wallet Tracking System
+# Shelfya Monolith Overview
 
 ## Overview
-Shelfya is an all-in-one wallet tracker that enables users to aggregate, view, and analyze their cryptocurrency portfolios. The system centralizes account management, wallet tracking, transaction history, and crypto portfolio analytics by integrating third-party APIs (Cryptocompare, Etherscan). It provides both a REST API for backend operations and a web client for user interactions.
+Shelfya is an all-in-one wallet tracker designed to help users manage, visualize, and analyze their cryptocurrency portfolios. The application consolidates authentication, wallet management, and profile features, providing a consistent interface via RESTful APIs and an integrated web client. It leverages third-party APIs (Cryptocompare, Etherscan) to fetch live wallet data and insights, supporting individual users in overseeing their assets and history securely.
 
 ## Key Features
 
-- **User Authentication & Management**: Allows users to register, verify their email, login, logout, and manage their profile securely.
-- **Wallet Aggregation**: Users can add, view, and delete multiple crypto wallets, centralizing their cryptocurrency holdings.
-- **Transaction History & Analytics**: Fetches, visualizes, and provides statistics on wallet transactions.
-- **API Integration**: Connects to external cryptocurrency APIs (Cryptocompare, Etherscan) to fetch up-to-date market and transaction data.
-- **Client Dashboard**: Web client provides dashboards, profile management, tax area, and transaction graphing for users.
-- **PDF Tax Reports**: Generates fiscal summaries (PDF export) for personal accounting (static, not API connected).
+- **User Authentication System**: Enables account registration, email verification, login/logout, and secure token refresh to protect user actions and data.
+- **Wallet Management**: Lets users add, list, and delete wallets, and provides transaction history and statistic insights per wallet.
+- **Profile Management**: Allows users to view and update their profile or reset their password.
+- **Dashboard & Visualization**: The client offers summary dashboards, profile views, fiscal reports (PDF generation), and graphical transaction views.
+- **API Integration**: Connects to Cryptocompare and Etherscan for fetching asset information and transaction data.
 
 ## System Errors
 
-- **Authentication Error**: Occurs when missing or invalid access tokens are supplied.  
-  _Resolution_: Re-authenticate and ensure the access token is present and valid.
-- **Wallet Not Found**: Wallet ID does not exist or is invalid.  
-  _Resolution_: Confirm and supply a valid wallet ID.
-- **Email Verification Error**: Invalid or expired email verification token.  
-  _Resolution_: Request a new verification email.
-- **External API Failure**: Failure in communicating with Cryptocompare/Etherscan (network issues or API limits).  
-  _Resolution_: Retry after some time; monitor API status limits.
-- **Profile Update Error**: Invalid data or credentials when attempting to update profile.  
-  _Resolution_: Ensure all required fields are completed and credentials are accurate.
+- **Authentication Error**: Occurs when credentials are invalid or tokens have expired.
+  - _Resolution_: Re-login or use token refresh endpoint.
+- **Wallet Not Found**: Triggered when accessing a non-existent wallet.
+  - _Resolution_: Verify wallet ID or create a new wallet.
+- **API Connectivity Issue (Third-Party)**: Failure to retrieve data from Cryptocompare/Etherscan.
+  - _Resolution_: Check network, API keys, or try again later.
+- **Profile Update Conflict**: Occurs when invalid profile data is submitted.
+  - _Resolution_: Ensure payload matches required format/specifications.
 
 ## Usage Examples
 
-```http
-# Register a new user
-POST /api/v1/auth/register
-Content-Type: application/json
-{
-  "email": "user@example.com",
-  "password": "securePassword123"
+```javascript
+// Registering a new user via API
+fetch('/api/v1/auth/register', {
+  method: 'POST',
+  body: JSON.stringify({ email: "user@example.com", password: "securePassword" }),
+  headers: { 'Content-Type': 'application/json' }
+});
+
+// Adding a wallet
+fetch('/api/v1/', {
+  method: 'POST',
+  body: JSON.stringify({ address: "0x123..." }),
+  headers: { 'Authorization': 'Bearer YOUR_TOKEN' }
+});
+
+// Viewing dashboard in client (React example)
+import { useEffect } from 'react';
+
+function Dashboard() {
+  useEffect(() => {
+    // Fetch wallet stats
+    fetch('/api/v1/portfolio/myWalletId')
+      .then(res => res.json())
+      .then(stats => /* render stats */);
+  }, []);
+  // ...
 }
-
-# Login
-POST /api/v1/auth/login
-Content-Type: application/json
-{
-  "email": "user@example.com",
-  "password": "securePassword123"
-}
-
-# Add a wallet
-POST /api/v1/
-Content-Type: application/json
-Authorization: Bearer <token>
-{
-  "walletAddress": "0x1234abcd..."
-}
-
-# Get wallet history
-GET /api/v1/history/<walletId>
-Authorization: Bearer <token>
-
-# Access dashboard (Client)
-GET /dashboard
 ```
 
 ## System Integration
 
 ```mermaid
 flowchart LR
-  subgraph ExternalAPIs
-    cryptocompare["Cryptocompare API"]
-    etherscan["Etherscan API"]
-  end
-
-  subgraph Backend
-    authService["Auth Service"]
-    walletService["Wallet Service"]
-    historyService["History Service"]
-    portfolioService["Portfolio Service"]
-    profileService["Profile Service"]
-    thisModule["Shelfya REST API"]
-  end
-
-  subgraph Client
-    webApp["Shelfya Web Client"]
-  end
-
-  cryptocompare -- fetch market & tx data --> walletService
-  etherscan -- fetch tx data --> walletService
-  walletService -- wallet CRUD --> thisModule
-  authService -- auth endpoints --> thisModule
-  historyService -- history endpoints --> thisModule
-  portfolioService -- analytics endpoints --> thisModule
-  profileService -- profile endpoints --> thisModule
-
-  thisModule -- API calls --> webApp
-
-  webApp -- user actions --> thisModule
-  webApp -- dashboards, profile, fiscalite --> details["[UX Features]"]
-  walletService --> process["[Data Aggregation]"]
-  thisModule --> process
-  details --> consumers["[End Users]"]
-  process --> consumers
+  dependencies["Cryptocompare API, Etherscan API, Database"] --> thisModule["Shelfya Monolith"]
+  thisModule --> usedBy["Web Client (React)"]
+  dependencies --> details["Fetches wallet, transaction, and asset data"]
+  thisModule --> process["Manages authentication, wallet operations, profile updates"]
+  usedBy --> consumers["End Users: Track & manage crypto portfolios"]
 ```

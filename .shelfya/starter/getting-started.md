@@ -1,92 +1,57 @@
-# Getting Started with shelfya
+# Getting Started
 
 ## Overview
-The **Getting Started** guide provides a step-by-step introduction to launching and developing with the shelfya project. It covers both the backend (Bun/Express + PostgreSQL) and frontend (React) applications, illustrating how these components work together as a cohesive system for local development and prototyping.
+This guide helps you quickly set up and connect the Shelfya backend and frontend modules for local development. Shelfya is composed of an Express-based backend (using Bun and Prisma) and a React-based frontend. The system enables asset management, visualization, and user interaction through a web interface, leveraging a PostgreSQL database and Mailhog for email testing.
 
 ## Key Features
-
-- **Backend Quickstart**: Run a Bun-powered server, set up a PostgreSQL database, and generate a Prisma client for database operations.
-- **Frontend Quickstart**: Start the React-based web application and connect it with the backend via HTTP APIs.
-- **Local Development Workflow**: Integrated Docker Compose for required infrastructure (PostgreSQL, Mailhog) and environment variable management.
-- **System Interoperability**: Backend exposes public HTTP APIs, consumed by the React frontend.
-- **Extensibility Guidance**: Foundation for customizing data models, API endpoints, and UI components.
+- **Backend Service (Express, Bun, Prisma)**: Provides REST APIs for asset management and user authentication, connects to PostgreSQL, and supports email sending via Mailhog.
+- **Frontend Client (React)**: Offers interactive dashboards and data visualization, connects securely to the backend APIs.
+- **Database Integration**: Uses PostgreSQL for persistent storage with Prisma ORM for type-safe queries.
+- **Email Testing (Mailhog)**: Captures outbound emails for development without sending real messages.
+- **Environment Configuration**: Uses `.env` variables for secrets, API keys, and database connections.
+- **Docker-based Services**: Fast local setup for both PostgreSQL and Mailhog using Docker Compose.
 
 ## System Errors
+- **Backend Database Connection Error**: Occurs when environment variables (e.g., `DATABASE_URL`) are missing or PostgreSQL is unavailable.  
+  _Resolution_: Verify `.env` configuration and ensure Docker services are running.
 
-- **Missing Environment Variables**:  
-  If required environment variables (database, API keys) are unset, the backend will fail to start or connect to PostgreSQL.  
-  **Resolution**: Copy `.env.example` to `.env`, fill in the required keys (see backend configuration).
+- **Frontend API Connection Error**: Happens if the frontend cannot reach the backend API (wrong URL, backend not started).  
+  _Resolution_: Check the backend server’s status and ensure the frontend is configured with the correct API endpoint.
 
-- **Database Connection Error**:  
-  Backend or services may fail with authentication or connection errors if the PostgreSQL instance is not running or credentials are incorrect.  
-  **Resolution**: Ensure Docker Compose is running the `postgres` service, and credentials match `.env` values.
-
-- **Port Conflicts**:  
-  The default backend (`8080`) or frontend (`3000`) ports may already be in use.  
-  **Resolution**: Edit the port in `.env` or the associated run scripts as needed.
-
-- **Client-Backend Network CORS Error**:  
-  If React frontend attempts to call backend APIs on a different origin and CORS is not allowed, API requests will fail.  
-  **Resolution**: Ensure the backend Express app has appropriate CORS settings, and both apps run on compatible hostnames for local development.
+- **Email Sending Failed (Mailhog)**: Backend email features may fail if Mailhog is not running or configured.  
+  _Resolution_: Make sure Mailhog is up via Docker Compose and environment variables reference its SMTP port (1025).
 
 ## Usage Examples
 
-**1. Backend Setup and Launch**
-```shell
-# Move into backend directory, install and run backend server
+```bash
+# 1. Start required Docker services (PostgreSQL & Mailhog):
 cd backend
-bun i               # Install dependencies (Bun)
-bun dev             # Start backend server (default: http://localhost:8080)
+docker compose up -d
 
-# (Optional) Set up the database with Prisma
-bunx prisma generate    # Generate Prisma client
-bunx prisma migrate dev # Run migrations
+# 2. Initialize backend dependencies and start API server:
+bun i                # install backend dependencies
+bunx prisma generate # generate Prisma client
+bun dev              # start backend server (default: http://localhost:8080)
+
+# 3. Prepare frontend and launch development server:
+cd ../client
+npm install          # install frontend dependencies
+npm start            # start frontend (default: http://localhost:3000)
+
+# 4. Access your app:
+# - Frontend: http://localhost:3000
+# - Backend API: http://localhost:8080
+# - Mailhog Web UI: http://localhost:8025
 ```
-
-**2. Infrastructure Services (Database, Mailhog)**
-```shell
-# In the backend directory, start necessary services
-docker-compose up      # Launches PostgreSQL & Mailhog for local development
-```
-
-**3. Frontend Setup and Launch**
-```shell
-cd client
-npm install            # Install dependencies
-npm start              # Runs React frontend (http://localhost:3000)
-```
-
-**4. Example Integration: Open Frontend, Connect to Backend**
-- Open http://localhost:3000 (React frontend) in your browser.
-- The application will make API requests to http://localhost:8080 (backend server).
 
 ## System Integration
 
 ```mermaid
 flowchart LR
-  subgraph Infra
-    db[(PostgreSQL)]
-    mail[Mailhog]
-  end
-
-  client[React App (Frontend)] -- HTTP/REST --> backend[Bun/Express API (Backend)]
-  backend -- DB Connection --> db
-  backend -- SMTP (Development) --> mail
-
-  Infra --> backend
-  backend --> client
+  dependencies["Docker, PostgreSQL (.env), Mailhog, Prisma"] --> thisModule["Getting Started"]
+  thisModule --> process["Workflow: Setup, Launch, Connect"]
+  thisModule --> usedBy["Backend Service (Express/Bun), Frontend Client (React)"]
+  usedBy --> consumers["Developers, Testers, End Users"]
+  dependencies --> details["Environment variables, Docker volumes, API keys"]
+  usedBy --> process
 ```
-
-- **Dependencies**: PostgreSQL (db), Mailhog (mail) services via Docker Compose
-- **This Module**: The Getting Started flow (backend, frontend, infrastructure)
-- **Used By**: Developers aiming to run or extend shelfya locally
-
-**Details**:
-- Backend: Handles all API logic, authentication, and database access.
-- Frontend: React SPA consuming backend APIs.
-- Process: Install dependencies, start services, and develop end-to-end.
-- Consumers: Developers customizing or building applications using shelfya.
-
----
-
-This guide helps you understand the high-level workflow and integration points to successfully develop or prototype with shelfya. For additional details on API endpoints or customizing logic, consult the respective backend/client documentation.

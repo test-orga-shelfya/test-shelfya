@@ -1,57 +1,82 @@
-# Starter FAQ
+# FAQ Module
 
 ## Overview
-This FAQ module provides answers to common questions and troubleshooting tips for developers using the Shelfya starter project. It is designed to help new users quickly understand how core components (backend, database, frontend) work together, how to run the system, and how to resolve typical issues encountered when developing or deploying the project.
+The FAQ module provides end-users and developers with clear answers to common questions about the client and backend systems. Its purpose is to centralize knowledge, streamline onboarding, and resolve frequent doubts related to project setup, usage, and troubleshooting for both frontend (React client) and backend (Bun/Prisma) environments.
 
 ## Key Features
-
-- **Quick Start Guidance**: Step-by-step instructions for setting up backend and frontend, including dependencies, environment, and commands.
-- **Common Error Resolution**: Solutions and explanations for frequent problems during startup and development.
-- **Development Workflow Support**: References for useful scripts and procedures for both backend and frontend teams.
-- **System Overview**: High-level explanation of how services (backend, database, frontend) connect and interact.
+- **Centralized Q&A**: Maintains a curated list of frequently asked questions to accelerate problem-solving and user education.
+- **Project Setup Guidance**: Offers step-by-step recommendations for initializing, running, and developing both backend and frontend subsystems.
+- **Troubleshooting Repository**: Documents common errors and their resolutions, decreasing support needs and development friction.
+- **Context-Sensitive Answers**: Adapts responses to both backend (Bun/Prisma) and frontend (React) aspects of the monorepo.
 
 ## System Errors
-
-- **Dependency Installation Issues**: Errors may occur if dependencies are not installed or are missing versions.
-  - **Resolution**: Run `bun i` in the `backend` folder for backend dependencies and `npm install` in the `client` directory for frontend dependencies.
-- **Database Connection Errors**: The backend may not start if PostgreSQL is not running or credentials are misconfigured.
-  - **Resolution**: Ensure Docker is running, and environment variables (`POSTGRES_USER`, `POSTGRES_PASSWORD`, etc.) are set properly in `backend/docker-compose.yml`.
-- **Port Conflicts**: Commonly, ports 3000 (frontend) and 5432 (database) may already be in use.
-  - **Resolution**: Stop any services occupying those ports, or update the port mappings in Docker Compose or React scripts configuration files.
-- **Mailhog Not Accessible**: If emails are not received during development.
-  - **Resolution**: Access the Mailhog web interface on `http://localhost:8025` to view queued emails or verify Mailhog service is running by checking Docker Compose logs.
+- **Dependency Installation Issues**:  
+  *Description*: Project fails to start due to missing or improperly installed dependencies.  
+  *Resolution*: Ensure you run `bun i` in the backend directory, and `npm install` in the client directory.
+- **Port Conflicts or Application Not Starting**:  
+  *Description*: App fails to run because the default ports are in use or misconfigured.  
+  *Resolution*: Make sure no other process uses the default ports (e.g., 3000 for React, backend default for Bun). Change port configurations if necessary.
+- **Prisma Client Errors**:  
+  *Description*: Errors occur during database operations or startup due to missing or outdated Prisma client files.  
+  *Resolution*: Run `bunx prisma generate` after changing the schema, and ensure the database connection is valid.
+- **Build/Script Errors in Client**:  
+  *Description*: Errors while building or running React scripts (e.g., missing environment variables, linting errors).  
+  *Resolution*: Review the console output, confirm environment variable setup, and ensure all scripts are run in the root of the `client` folder.
 
 ## Usage Examples
 
-```bash
-# Backend: Install dependencies, start the server, generate Prisma client
-cd backend
-bun i
-bun dev
-bunx prisma generate
+```markdown
+### Backend Setup Example
 
-# (If database migrations are needed)
-bunx prisma migrate dev
+1. Install dependencies:
+   ```
+   cd backend
+   bun i
+   ```
 
-# Frontend: Install dependencies and start the app
-cd client
-npm install
-npm start
+2. Start the development server:
+   ```
+   bun dev
+   ```
 
-# To run the system services (database and mailhog) using Docker Compose
-cd backend
-docker compose up -d
+3. Update Prisma client after schema changes:
+   ```
+   bunx prisma generate
+   ```
 
-# Access the frontend at: http://localhost:3000
-# Access Mailhog web UI at: http://localhost:8025
+### Client Setup Example
+
+1. Install dependencies:
+   ```
+   cd client
+   npm install
+   ```
+
+2. Run the development server:
+   ```
+   npm start
+   ```
+
+3. Build the application for production:
+   ```
+   npm run build
+   ```
+
+### Common Troubleshooting
+
+- **Q:** The server won't start, what should I check?
+  **A:** Make sure all dependencies are installed (`bun i` or `npm install`). Check for port conflicts. Review console output for specific error details.
+
+- **Q:** How do I update the Prisma client after changing the schema?
+  **A:** Run `bunx prisma generate` in the backend directory.
 ```
 
 ## System Integration
 
 ```mermaid
 flowchart LR
-  dependencies["Docker Compose, Node, Bun, npm"] --> thisModule["FAQ/Starter Guide Module"] --> usedBy["Developers, QA"]
-  dependencies --> details["[PostgreSQL, Mailhog, React, Prisma]"]
-  thisModule --> process["[Guides, Troubleshooting, Integration Steps]"] 
-  usedBy --> consumers["[Project Contributors, New Team Members]"]
+  dependencies["Backend (Bun, Prisma), Client (React)"] --> faqModule["FAQ Module"] --> usedBy["Developers & Users"]
+  dependencies --> backendSetup["Project & Environment Setup"]
+  faqModule --> troubleshooting["Troubleshooting / Q&A"]
+  usedBy --> quickStart["Quick Start Guides, Answers"]
 ```

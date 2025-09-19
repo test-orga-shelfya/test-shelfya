@@ -1,100 +1,119 @@
 # System Architecture
 
 ## Overview
-The Shelfya architecture is a modular web application designed for cryptocurrency wallet management, portfolio tracking, and user authentication. It consists of a **React client application** and an **Express backend server**. The backend exposes a RESTful API and integrates with a PostgreSQL database via Prisma ORM, ensuring secure storage and retrieval of user, wallet, and transactional data. The system enables authenticated user sessions, wallet portfolio insights, email verification workflows, and historical tracking of asset values.
+This document provides a feature-centric overview of the Shelfya system, describing the main modules, their roles, and how the backend and frontend integrate to provide a secure, full-stack wallet and portfolio management application. Shelfya enables users to register, authenticate, manage crypto wallets, visualize historical data, and interact securely through a React frontend and an Express/Prisma/Postgres backend.
 
 ## Key Features
-
-- **User Authentication & Authorization**:  
-  Secure registration, login, and JWT-based session management with access and refresh tokens. Email verification supports account activation.
-
-- **Wallet Management**:  
-  Users can link, view, and manage multiple cryptocurrency wallets. Wallet records are securely associated with user profiles.
-
-- **Portfolio Tracking & Analytics**:  
-  The backend aggregates holdings and value history for each wallet and provides endpoints for retrieving portfolio performance data over time.
-
-- **Historical Data Recording**:  
-  The system maintains structured, timestamped records of asset values and portfolio changes to facilitate analytics and reporting.
-
-- **RESTful API with Role-Based Access**:  
-  APIs for authentication, wallet access, profile management, and portfolio analytics. Access control is enforced using JWT and middleware.
-
-- **Environment & Security Controls**:  
-  System health depends on required environment variables. Security best practices include helmet, CORS, request rate limiting, and parameter validation.
+- **User Authentication & Authorization**: Secure user registration, login, JWT-based access & refresh token management, and role-based access controls (admin/user).
+- **Wallet Management**: Users can add, view, and organize multiple wallets, each containing its transaction history.
+- **Portfolio Analytics**: Visualization of wallet and currency history, supporting features like valuation graphs and trends over time.
+- **Email Verification**: On registration, users are required to verify their email to activate access.
+- **Rate Limiting & Security**: Login and registration endpoints are rate-limited to prevent abuse. The app uses CORS, Helmet, and secure cookie handling for robust security.
+- **Prisma ORM Integration**: Reliable, type-safe interaction with a Postgres database, maintaining data integrity for users, wallets, currencies, and histories.
+- **Frontend Routing & State Management**: React app with protected routes using context-managed authentication for seamless UX.
 
 ## System Errors
+- **Authentication Errors**:  
+  - **Invalid Token**: Shown when the access or refresh token is expired or invalid.  
+    *Resolution*: Re-login or refresh session.
+  - **Email Not Verified**: User attempts login without verifying email.  
+    *Resolution*: Complete email verification via the link sent to email.
+  - **Rate Limit Exceeded**: Too many login/registration attempts in a short period.  
+    *Resolution*: Wait for the cooldown window to pass before retrying.
 
-- **Invalid or Missing JWT Token**:  
-  API requests requiring authentication fail with 401 Unauthorized if the JWT is missing, expired, or invalid.  
-  *Resolution*: Refresh token, re-authenticate, or check client request headers.
+- **Database Connection Errors**:  
+  - **DB Unavailable**: Backend cannot connect to Postgres/Prisma.  
+    *Resolution*: Check database server status and DATABASE_URL configuration.
+  - **Unique Constraint Violation**: Attempt to register/email/wallet that already exists.  
+    *Resolution*: Use unique credentials/addresses.
 
-- **Email Not Verified**:  
-  Certain actions (e.g., login, profile updates) may require email verification.  
-  *Resolution*: Follow the verification link sent to the user’s email.
-
-- **Rate Limit Exceeded**:  
-  Too many auth or registration attempts trigger a 429 Too Many Requests error.  
-  *Resolution*: Wait for the cooldown period before retrying.
-
-- **Missing Environment Variables**:  
-  Application startup fails if any required environment variables are missing.  
-  *Resolution*: Set the missing environment variables as outlined in backend/src/constants.ts (`REQUIRED_ENV_VARS`).
+- **Environment Misconfiguration**:  
+  - **Missing Env Vars**: Startup validation fails if required variables are not set (e.g., JWT secrets, DB URL).  
+    *Resolution*: Set all required environment variables per `REQUIRED_ENV_VARS` in the `.env` file.
 
 ## Usage Examples
 
-```tsx
-// Client: Logging In and Accessing the Dashboard
-// Pseudocode (React + API usage)
-function handleLogin(email, password) {
-  fetch(`${process.env.API_URL}/api/v1/auth/login`, {
-    method: 'POST',
-    credentials: 'include',
-    body: JSON.stringify({ email, password }),
-    headers: { 'Content-Type': 'application/json', }
-  }).then(res => {
-    if (res.ok) navigate('/dashboard');
-    else alert('Authentication failed');
-  });
-}
+### 1. User Registration & Login
 
-// Client: Fetching Wallet Portfolio (after auth)
-fetch(`${process.env.API_URL}/api/v1/portfolio`, {
-  method: 'GET',
-  credentials: 'include',
-  headers: {
-    Authorization: `Bearer ${accessToken}`
+```javascript
+// On client: Register user
+fetch(`${process.env.REACT_APP_API_URL}/api/v1/auth/register`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ name: "User", email: "test@example.com", password: "securePassword123!" })
+});
+
+// On client: Login user
+fetch(`${process.env.REACT_APP_API_URL}/api/v1/auth/login`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ email: "test@example.com", password: "securePassword123!" }),
+  credentials: 'include'
+});
+```
+
+### 2. Adding a Wallet
+
+```javascript
+// Authenticated user adds a new wallet
+fetch(`${process.env.REACT_APP_API_URL}/api/v1/wallets`, {
+  method: 'POST',
+  headers: { 
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${accessToken}`,
+  },
+  body: JSON.stringify({ address: "0x123...", title: "My ETH Wallet" })
+});
+```
+
+### 3. Fetching Portfolio Graph Data
+
+```javascript
+// Fetch historical wallet data for graphs
+fetch(`${process.env.REACT_APP_API_URL}/api/v1/wallets/{walletId}/history`, {
+  headers: { 
+    'Authorization': `Bearer ${accessToken}`,
   }
-}).then(resp => resp.json()).then(data => setPortfolio(data));
-
-// Backend: Adding an authenticated API route
-router.use('/wallet', verifyAccessToken, walletRouter);
+}).then(res => res.json());
 ```
 
 ## System Integration
 
 ```mermaid
 flowchart LR
-  subgraph client["Client Application (React)"]
-    clientApp
-  end
-  subgraph backend["Backend Server (Express/Node.js)"]
-    api["API Routes (/api/v1)"]
-    auth["Auth Middleware (JWT, Email Verification)"]
-    prisma["Database ORM (Prisma)"]
-  end
-  subgraph db["PostgreSQL Database"]
-    database["User, Wallet, History, Currency"]
+  subgraph Backend
+    expressApi["Express API Server"]
+    prisma["Prisma ORM"]
+    postgres["Postgres Database"]
+    constants["Config & Env Constants"]
   end
 
-  clientApp -- RESTful HTTP --> api
-  api --> auth
-  api --> prisma
-  prisma -- SQL --> database
+  subgraph Frontend
+    reactApp["React App"]
+    reactRouter["React Router"]
+    authProvider["Auth Provider (Context)"]
+  end
 
-  api -- "Provides" --> dependencies[Dependencies]
-  auth -- "Enforces" --> process[Security & Access Control]
-  clientApp -- "Consumes" --> usedBy[API Endpoints]
-  api -- "Exposes" --> usedBy
-  database -- "Stores" --> details[Structured Data]
+  reactApp --> reactRouter
+  reactRouter --> authProvider
+  authProvider -->|HTTP (fetch)| expressApi
+
+  expressApi -->|API Calls| prisma
+  prisma -->|ORM Queries| postgres
+  expressApi --> constants
+
+  expressApi -- "CORS, cookies, JWT" --> reactApp
+  expressApi -- "Serve /api/v1/*" --> reactApp
+
+  reactApp -- "Protected routes & Auth" --> authProvider
+  reactApp -.->|Email verify links| expressApi
+
+  expressApi -- "Validation, rate-limit errors" --> reactApp
 ```
+
+**Legend**:  
+- **Frontend**: React app routes user actions; handles authentication state and protected navigation.
+- **Backend**: Express API handles requests, enforces security, and interacts with Prisma/Postgres for data persistence.
+- **Integration**: HTTP (fetch/AJAX) between React and Express API; JWT and cookies for authentication session management. Enforces security policies (CORS, Helmet, rate-limiting).
+
+This feature-centric architecture aims to clarify roles, answer "how do things connect?", and help developers quickly locate system integration points and sources of common errors.

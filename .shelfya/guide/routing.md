@@ -1,67 +1,95 @@
-# Routing Module
+# Routing System
 
 ## Overview
-The Routing module manages all public HTTP API endpoints for the backend and coordinates which controllers handle specific system features. It centralizes authentication, wallet management, portfolio tracking, transaction history, and user profile access under a single router, facilitating secure and organized communication between frontend clients and backend services. The routing system also enforces authentication and rate limiting on relevant routes to maintain system security and reliability.
+The Routing System orchestrates how client and backend modules communicate by structuring, protecting, and exposing the primary API endpoints crucial for authentication, wallet, portfolio, history, and user profile functionalities. On the backend, it defines API routes, secures resources via authentication middleware, and organizes controllers. On the frontend, it coordinates page routing and route protection to enforce user access policies.
 
 ## Key Features
 
-- **User Authentication Endpoints**: Provides registration, login, email verification, token refresh, and logout routes.
-- **Wallet Management**: Allows clients to create, list, and delete wallets, protected with authentication middleware.
-- **Portfolio Retrieval**: Enables fetching portfolio details by wallet, giving insight into user's asset information.
-- **Transaction History**: Permits users to access historical data (price/value evolution) for their selected wallet, secured by authentication.
-- **Profile Management**: Lets users view and update profile and password information via authenticated endpoints.
-- **Route Protection and Rate Limiting**: Integrates middleware for access token verification and throttling to prevent abuse and secure sensitive operations.
-- **Modular Router Structure**: Combines domain-specific sub-routers to ensure scalability and clear code separation.
+- **Backend Unified Router**: Central router (`backend/src/routes/index.ts`) aggregating all domain-specific sub-routers (auth, wallet, history, portfolio, profile) to present a cohesive API to clients.
+- **Route-based Access Control**: Implements authentication checks (e.g., `verifyAccessToken`) to restrict access for sensitive routes, ensuring only authenticated users can access and modify user-specific resources.
+- **Domain-Specific Endpoints**: Exposes logical endpoints for core operations:
+  - `/auth`: User authentication (login, registration, token refresh, email verification, logout).
+  - `/wallet`: CRUD operations for wallets (protected).
+  - `/history`: Historical portfolio/wallet data access (protected).
+  - `/portfolio`: Portfolio value retrieval.
+  - `/profile`: User profile management, password changes (protected).
+- **Frontend Route Protection**: Client-side component (`ProtectedRoute`) wraps sensitive pages (like Dashboard, Profile, Graph, Fiscalité) to prevent unauthorized viewing, redirecting unauthenticated users to the login screen.
+- **Seamless Page Navigation**: Client pages (e.g., Home, Dashboard, Profile, Graph, Fiscalite) are mapped to routes, with smooth transitions and context-aware navigation for both authenticated and unauthenticated flows.
 
 ## System Errors
 
-- **401 Unauthorized**: Returned when endpoints requiring authentication are accessed without a valid access token.
-  - *Resolution*: Ensure the Authorization header is set with a valid JWT. Log in again if necessary.
-- **429 Too Many Requests**: Triggered by hitting rate-limited endpoints (e.g., login/register) too frequently.
-  - *Resolution*: Wait before retrying, or ensure automation/scripts respect rate limits.
-- **404 Not Found**: When accessing endpoints with incorrect route or resource identifiers.
-  - *Resolution*: Ensure routes and resource IDs (such as wallet or user IDs) are valid.
-- **400 Bad Request**: Caused by invalid input parameters or payloads.
-  - *Resolution*: Follow API input documentation and use correct types and data formats.
+- **401 Unauthorized**: Triggered when accessing protected API routes (`/wallet`, `/history`, `/profile`) without a valid access token.  
+  _Resolution_: Authenticate the user and ensure a valid access token is presented.
+- **403 Forbidden**: Returned when a valid user attempts to access or modify a resource they do not own.
+  _Resolution_: Confirm the user has permission for the resource; cross-check user IDs and resource ownership.
+- **429 Too Many Requests**: For `/auth/login` and `/auth/register`, rate limiting middleware prevents brute-force attacks.
+  _Resolution_: Wait before retrying or reduce request frequency.
+- **Validation Errors**: When client payloads are missing required fields or have invalid formats (applies across modules).
+  _Resolution_: Review request body for completeness and correct types.
 
 ## Usage Examples
 
-```typescript
-// Login
-await api.post("/auth/login", { email: "user@email.com", password: "pass123" });
+```javascript
+// Client: Accessing protected dashboard route (frontend uses ProtectedRoute)
+import ProtectedRoute from 'components/ProtectedRoute';
+import Dashboard from 'pages/Dashboard';
 
-// Register
-await api.post("/auth/register", { email: "...", password: "...", ... });
+<Route path="/dashboard" element={
+  <ProtectedRoute>
+    <Dashboard />
+  </ProtectedRoute>
+} />
 
-// Fetch user's wallets (requires authentication)
-await api.get("/wallet", { headers: { Authorization: `Bearer <token>` } });
+// Backend: Making an authenticated request to fetch all wallets
+GET /wallet
+Headers: Authorization: Bearer <user-access-token>
 
-// Get wallet history (requires authentication)
-await api.get("/history/42?startDate=2024-01-01T00:00:00.000Z", { headers: { Authorization: `Bearer <token>` } });
+// Backend: Logging in
+POST /auth/login
+Body: { "email": "...", "password": "..." }
 
-// Get portfolio for wallet
-await api.get("/portfolio/42");
+// Backend: Fetching portfolio data for a specific wallet
+GET /portfolio/:id
 
-// Update user profile (requires authentication)
-await api.patch("/profile", { name: "NewName" }, { headers: { Authorization: `Bearer <token>` } });
+// Backend: Updating user's profile (protected)
+PATCH /profile
+Headers: Authorization: Bearer <user-access-token>
+Body: { "name": "...", "email": "..." }
 ```
 
 ## System Integration
 
 ```mermaid
 flowchart LR
-  clientApp["Frontend Clients"] --> apiRouter["Routing Module"]
-  dependencies["Express, Middleware (Auth/Rate Limiter)"] --> apiRouter
-  apiRouter --> authController["Auth Controller"]
-  apiRouter --> walletController["Wallet Controller"]
-  apiRouter --> historyController["History Controller"]
-  apiRouter --> portfolioController["Portfolio Controller"]
-  apiRouter --> profileController["Profile Controller"]
-  authController --> db["Database"]
-  walletController --> db
-  historyController --> db
-  portfolioController --> db
-  profileController --> db
-  apiRouter --> protectedRoutes["Access/Refresh Token Validation"]
-  clientApp --> protectedRoutes
+  clientPages["Client Pages (Home, Dashboard, Profile, Graph, Fiscalite)"]
+  protectedRoute["[ProtectedRoute.tsx]"]
+  apiLayer["[API Layer (services/api.js)]"]
+  backendRouter["Backend Unified Router\n(routes/index.ts)"]
+  auth["Auth Router (/auth)"]
+  wallet["Wallet Router (/wallet)"]
+  history["History Router (/history)"]
+  portfolio["Portfolio Router (/portfolio)"]
+  profile["Profile Router (/profile)"]
+  authMW["[verifyAccessToken Middleware]"]
+  controllers["Domain Controllers"]
+
+  clientPages --> protectedRoute
+  protectedRoute --> apiLayer
+  apiLayer --> backendRouter
+
+  backendRouter --> auth
+  backendRouter --> wallet
+  backendRouter --> history
+  backendRouter --> portfolio
+  backendRouter --> profile
+
+  wallet --> authMW
+  history --> authMW
+  profile --> authMW
+
+  auth --> controllers
+  wallet --> controllers
+  history --> controllers
+  portfolio --> controllers
+  profile --> controllers
 ```

@@ -1,82 +1,115 @@
 # API Overview
 
 ## Overview
-The API provides a cohesive set of endpoints for user authentication, profile management, wallet operations, portfolio insights, and transaction history within the Shelfya platform. It acts as the foundation for secure user access, personal data management, digital wallet control, and portfolio tracking, enabling seamless integration with frontend clients and external systems.
+This module provides the core HTTP API endpoints for authentication, user profiles, portfolio information, wallet management, and historical data retrieval within the Shelfya platform. It exposes RESTful endpoints, validates incoming requests, and coordinates with service layers to implement required business logic, ensuring secure and organized access to user financial data and account features.
 
 ## Key Features
-- **User Authentication**: Handles secure registration, login, logout, and token refresh, ensuring protected access to the platform.
-- **Email Verification**: Supports registration with email confirmation to validate user accounts.
-- **Profile Management**: Allows users to retrieve, edit their profile details, and reset their passwords.
-- **Wallet Management**: Provides endpoints for creating, retrieving, and deleting digital wallets associated with user accounts.
-- **Portfolio Insights**: Delivers current allocation, asset prices, and value trends for each wallet’s portfolio.
-- **Transaction History**: Enables retrieval of filtered historical wallet transactions for account reconciliation and analysis.
-- **Input Validation**: Schemas are used extensively to validate request payloads to maintain data integrity and security.
+
+- **Authentication API**: 
+  - Secure login, registration, logout, and token refresh mechanisms.
+  - Email verification and access token management.
+  - Enforces security headers and stores refresh tokens using HttpOnly cookies.
+
+- **Portfolio API**: 
+  - Retrieves allocation, price data, values, and historical pricing for a user's wallet.
+  - Organizes and delivers insights about asset distribution and trends.
+
+- **Wallet Management API**: 
+  - Create, delete, and list wallets tied to a user account.
+  - Ensures validation and ownership before modification.
+
+- **History API**: 
+  - Fetches transactional or price history for a specific wallet.
+  - Supports date-based filtering and secure user access.
+
+- **Profile API**: 
+  - Retrieve and edit user profile information (email, name).
+  - Enables password resets with secure password validation.
 
 ## System Errors
-- **Validation Errors**: Occur when input data does not conform to the required schema.  
-  _Resolution_: Ensure all required fields are present and properly formatted.
-- **Authentication Errors**: Triggered by invalid credentials, missing/expired tokens, or when attempting unauthorized actions.  
-  _Resolution_: Re-authenticate, ensure cookies/tokens are included and not expired.
-- **Resource Not Found**: Returned when requested wallets, portfolio data, or history do not exist.  
-  _Resolution_: Verify resource identifiers/parameters; ensure the user has access rights.
-- **Duplicate Resource/Email**: Attempting to register or modify a profile/email that already exists.  
-  _Resolution_: Use a unique email for registration/profile updates.
-- **Internal Server Error**: Indicates unhandled server exceptions.  
-  _Resolution_: Review error message, retry, or contact support if persistent.
+
+- **Validation Error**: 
+  - *Description*: Input does not meet expected schema (e.g., invalid email, short password).
+  - *Resolution*: Check and correct the submitted data according to schema requirements.
+
+- **Authentication Error**: 
+  - *Description*: Invalid credentials or missing/expired tokens.
+  - *Resolution*: Ensure correct login details and valid/active tokens; repeat login or refresh as required.
+
+- **Resource Not Found**: 
+  - *Description*: Attempted to access a wallet, profile, or history that does not exist or doesn't belong to the user.
+  - *Resolution*: Verify resource identifiers and ownership, or create missing wallets/accounts.
+
+- **Email Already Registered**: 
+  - *Description*: Email is already registered during account creation.
+  - *Resolution*: Use a different email or recover the existing account.
+
+- **Database Constraint Error (Profile/Wallet)**:
+  - *Description*: Conflicting unique profile or wallet operation (e.g., email/wallet address already used).
+  - *Resolution*: Ensure uniqueness and correctness of provided data before retrying.
+
+- **Internal Server Error**: 
+  - *Description*: An unexpected failure in the backend or service layer.
+  - *Resolution*: Check server logs for details; may require technical support if persistent.
 
 ## Usage Examples
 
-```js
-// User Registration
-const response = await fetch('/api/auth/register', {
-  method: 'POST',
-  body: JSON.stringify({ name: 'Alice', email: 'alice@example.com', password: 'Secur3!Pass' }),
-  headers: { 'Content-Type': 'application/json' }
-});
-// Response: { message: "Registration successful. Please verify your email." }
+```typescript
+// User Login
+POST /api/auth/login
+{
+  "email": "user@example.com",
+  "password": "StrongPassword123!"
+}
 
-// Login and receive access token
-const response = await fetch('/api/auth/login', {
-  method: 'POST',
-  body: JSON.stringify({ email: 'alice@example.com', password: 'Secur3!Pass' }),
-  headers: { 'Content-Type': 'application/json' }
-});
-// Response: { accessToken: "..." }, HttpOnly refresh token set in cookie
+// Refresh Access Token
+POST /api/auth/refresh-access-token
+// (Requires 'refreshToken' cookie)
 
-// Fetch user profile (authenticated)
-const response = await fetch('/api/profile', {
-  headers: { Authorization: 'Bearer ACCESS_TOKEN' }
-});
-// Response: { id: 1, email: 'alice@example.com', name: 'Alice', ... }
+// Register
+POST /api/auth/register
+{
+  "email": "user@example.com",
+  "password": "StrongPassword123!",
+  "name": "John Doe"
+}
 
-// Create a new wallet
-const response = await fetch('/api/wallet', {
-  method: 'POST',
-  body: JSON.stringify({ address: '0x123...', title: 'Main Wallet' }),
-  headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ACCESS_TOKEN' }
-});
-// Response: { id: 1, address: '0x123...', title: 'Main Wallet', ... }
+// Get Portfolio
+GET /api/portfolio/1
+// Returns allocation, value, and price data for wallet with ID 1
 
-// Get wallet portfolio overview
-const response = await fetch('/api/portfolio/1', {
-  headers: { Authorization: 'Bearer ACCESS_TOKEN' }
-});
-// Response: { allocation: {...}, price: {...}, dailyPrice: {...}, value: {...}, dailyValue: {...} }
+// Create Wallet
+POST /api/wallet
+{
+  "address": "0x123456...",
+  "title": "My ETH Wallet"
+}
 
-// Retrieve wallet transaction history
-const response = await fetch('/api/history/1?startDate=2023-01-01', {
-  headers: { Authorization: 'Bearer ACCESS_TOKEN' }
-});
-// Response: [ { date: ..., amount: ..., ... }, ... ]
+// Fetch Wallet History (with optional date filter)
+GET /api/history/1?startDate=2024-01-01
+
+// Update User Profile
+PATCH /api/profile
+{
+  "email": "new@example.com",
+  "name": "Jane Doe"
+}
+
+// Change Password
+PATCH /api/profile/password
+{
+  "oldPassword": "OldPass!",
+  "newPassword": "NewPass!2024"
+}
 ```
 
 ## System Integration
 
 ```mermaid
 flowchart LR
-  dependencies["[Express] [Prisma/database] [Zod schemas]"] --> thisModule["This Module: API Controllers & Routes"]
-  thisModule --> usedBy["Used By: Web/Mobile Clients, Integrations"]
-  dependencies --> details["Handles validation, DB access, authorization, and session cookies"]
-  thisModule --> process["Runs input validation, authentication, then triggers service logic and response shaping"]
-  usedBy --> consumers["Browsers / Apps via REST APIs"]
+  dependencies["Express.js Routes & Schemas"]
+  dependencies --> thisModule["API Controllers (This Module)"] --> usedBy["Front-end Clients / Third-party Consumers"]
+  dependencies --> details["[Zod Validation, Rate Limiting, Prisma ORM]"]
+  thisModule --> process["[Service Layer: AuthService, WalletService, PortfolioService, etc.]"] 
+  usedBy --> consumers["[Web UI, Mobile App, Integrators]"]
 ```

@@ -1,93 +1,75 @@
 # Authentication Module
 
 ## Overview
-The Authentication Module provides a secure, token-based authentication system for users and API clients. It manages user registration, login, email verification, access and refresh token issuance, token renewal, and logout processes. This module serves as the entry point for user access and session management for both front-end and back-end interactions.
+The Authentication Module manages user identity within the system, handling user registration, login, logout, token management, and email verification. It secures API endpoints through JWT-based session flows and facilitates safe, easy integration for both backend and frontend components.
 
 ## Key Features
 
-- **User Registration**: Handles user sign-up, enforces strong password policies, and initiates email verification to activate accounts.
-- **Email Verification**: Sends verification emails after registration and validates user accounts upon link activation.
-- **User Login**: Authenticates users with email and password, issues access and refresh JWTs, and securely sets the refresh token in HTTP-only cookies.
-- **Access Token Refresh**: Allows clients to obtain new access tokens by presenting a valid, non-expired refresh token (using cookie storage).
-- **Logout**: Revokes user sessions by deleting refresh tokens both client-side (clearing cookies) and server-side (deletion from database).
-- **Access Control Middleware**: Validates access tokens on protected routes to enforce security policies.
-- **Rate Limiting**: Applies brute-force protection on registration and login endpoints via API rate limiting.
+- **User Registration**: Allows new users to create an account with email, password, and name. Initiates email verification.
+- **Email Verification**: Ensures a valid email before granting access, sending verification links post-registration.
+- **User Login**: Enables registered, verified users to authenticate with email and password, receiving JWT tokens for session management.
+- **Access & Refresh Token Management**: Issues short-lived access tokens for API access and long-lived refresh tokens (stored in cookies) to maintain sessions securely.
+- **Session Refresh**: Provides a mechanism to exchange refresh tokens for new access tokens without a full re-login, improving UX and security.
+- **Logout**: Invalidates refresh tokens, clears them from cookies and the database, and ensures user sessions are closed securely.
+- **Protected Routes Middleware**: Supplies Express middleware to protect backend endpoints by requiring valid JWTs in API requests.
+- **Rate Limiting**: Safeguards login and registration endpoints with configurable rate-limiting middleware to prevent abuse.
+- **Frontend Integration Hooks**: Offers React hooks (`useAuth`) and component examples (Login, Register, VerifyEmail) to streamline authentication into user-facing applications.
 
 ## System Errors
 
-- **Invalid or Expired Token**: Returned when provided JWTs are malformed, expired, or cannot be verified.  
-  *Resolution*: Re-authenticate or request a new token via refresh flow.
-- **Email Already Registered**: Attempt to register with an already-used email.  
-  *Resolution*: Use the login flow or a different email address.
-- **Unverified Email**: Attempt to log in with an account whose email is not verified.  
-  *Resolution*: Check inbox for the verification email and complete the process.
-- **Invalid Credentials**: Incorrect email or password supplied at login.  
-  *Resolution*: Confirm the credentials and try again.
-- **Refresh Token Missing or Invalid**: Refresh token not present in cookies or not valid during access token refresh or logout.  
-  *Resolution*: Ensure the browser is configured to send cookies and the user is properly logged in.
-- **Rate Limiting Triggered**: Too many login or registration attempts in a short time window.  
-  *Resolution*: Wait and retry after some time.
-- **Unknown Internal Error**: Catch-all for unhandled server faults.  
-  *Resolution*: Retry later or contact support.
+- **Invalid Credentials**: Occurs when login is attempted with incorrect email or password.  
+  **Resolution**: Ensure correct details; check for typos or verify account registration.
+- **Unverified Email**: Login is blocked if a user has not completed email verification.  
+  **Resolution**: Users must verify their email via the link sent post-registration.
+- **Email Already Registered**: Attempting to register with an existing email triggers this error.  
+  **Resolution**: Use another email or recover the previous account.
+- **Invalid/Expired Token**: Refresh, access, or email verification tokens may become invalid or expire.  
+  **Resolution**: Re-login or request a new verification email.
+- **Token Required**: Attempting actions needing tokens (e.g., logout, refresh) without sending a proper token, typically in cookies.  
+  **Resolution**: Ensure authentication flow sets and sends required cookies/tokens.
+- **Rate Limit Exceeded**: Too many login or registration attempts in a short period trigger this error.  
+  **Resolution**: Wait before retrying; ensure form is not being re-submitted rapidly.
 
 ## Usage Examples
 
 ```typescript
-// Registration (client-side)
+// Backend: Express route usage
+import { authRouter } from './routes/auth';
+app.use('/auth', authRouter);
+
+// Frontend: React useAuth hook for login
+import { useAuth } from '../hooks/useAuth';
+
+const LoginPage = () => {
+  const { login } = useAuth();
+  login('user@example.com', 'password123');
+};
+
+// Frontend: Register user via API
 await API.post("/auth/register", {
-  email: "user@example.com",
-  name: "User Name",
-  password: "StrongP@ssw0rd"
+  email: "newuser@email.com",
+  password: "SafeP@ssw0rd!",
+  name: "New User"
 });
 
-// After registration, user receives an email verification link.
-// User clicks: /auth/verify-email/:token (GET request handled by backend).
+// Verifying email (upon visiting verification link)
+await API.get(`/auth/verify-email/${verificationToken}`);
 
-// Login (client-side, with useAuth hook)
-const { login } = useAuth();
-await login("user@example.com", "StrongP@ssw0rd");
-// Access token stored in localStorage, refresh token handled via HttpOnly cookie.
+// Refreshing Access Token (handled automatically with cookies, or via API)
+await API.post('/auth/refresh-access-token');
 
-// Refreshing access token (client-side example)
-const { data } = await API.post("/auth/refresh-access-token", {}, { withCredentials: true });
-localStorage.setItem("token", data.accessToken);
-
-// Logout (client-side, with useAuth hook)
+// Logging out
 const { logout } = useAuth();
-await logout();
-
-// Protecting a backend route (Express middleware)
-import { verifyAccessToken } from "../middleware/auth";
-app.get('/protected', verifyAccessToken, (req, res) => {
-  res.json({ secret: "data" });
-});
+logout();
 ```
 
 ## System Integration
 
 ```mermaid
 flowchart LR
-  clientUI["Frontend<br/> (Login, Register, VerifyEmail Pages)"]
-  useAuthHook["useAuth<br/>(Auth Context)"]
-  apiLayer["API Service (axios calls)"]
-  authRouter["Auth API Routes (Express)"]
-  authController["Auth Controller"]
-  authService["Auth Service"]
-  tokenService["Token Service"]
-  mailService["Email Service"]
-  authMiddleware["Access Control Middleware"]
-  db["Database<br/>(Users, Refresh Tokens)"]
-
-  clientUI --> useAuthHook
-  useAuthHook --> apiLayer
-  apiLayer --> authRouter
-  authRouter --> authController
-  authController --> authService
-  authService --"Registers users, verifies emails"--> mailService
-  authService --"Token management"--> tokenService
-  tokenService --"Persists Refresh Tokens"--> db
-  authService --"Reads/writes users"--> db
-  authController --> authMiddleware
-  authMiddleware --> authService
-  authRouter --"Protect /auth/* routes"--> authMiddleware
+  dependencies["Dependencies"] --> thisModule["This Module"] --> usedBy["Used By"]
+  dependencies --> details["[prisma DB, jwt, bcrypt, email service, zod, express, rate limiter]"]
+  thisModule --> process["[routes: /register, /login, /logout, /refresh-access-token, /verify-email]"] 
+  thisModule --> process2["[middleware: verifyAccessToken (JWT)]"]
+  usedBy --> consumers["[React Frontend: useAuth, Login/Register/VerifyEmail pages]"]
 ```
